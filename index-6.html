@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#245c45">
+  <title>Psí výlety</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root { color-scheme: light; --green:#245c45; --pale:#edf5ef; --ink:#203027; --muted:#65736a; --line:#dce5de; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:#f5f7f4; color:var(--ink); }
+    header { background:var(--green); color:white; padding:20px 16px; }
+    header .inner, main { max-width:1000px; margin:auto; }
+    h1 { margin:0; font-size:1.7rem; }
+    header p { margin:5px 0 0; opacity:.9; }
+    main { padding:16px; }
+    .notice { padding:12px 14px; border-radius:12px; background:#fff6dc; border:1px solid #ead89b; margin-bottom:14px; line-height:1.45; }
+    .grid { display:grid; grid-template-columns:1fr; gap:14px; }
+    .card { background:white; border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 2px 8px #1c39220a; }
+    h2 { font-size:1.1rem; margin:0 0 12px; }
+    label { display:block; font-weight:650; font-size:.92rem; margin:11px 0 5px; }
+    input, textarea, button { font:inherit; }
+    input, textarea { width:100%; border:1px solid #cbd7ce; border-radius:10px; padding:11px; background:#fff; color:var(--ink); }
+    textarea { min-height:76px; resize:vertical; }
+    button { border:0; border-radius:10px; padding:11px 14px; background:var(--green); color:white; font-weight:650; cursor:pointer; }
+    button.secondary { background:var(--pale); color:var(--green); border:1px solid #c8dbcd; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    #map { height:360px; border-radius:12px; border:1px solid var(--line); z-index:1; }
+    .status { color:var(--muted); font-size:.9rem; margin-top:10px; white-space:pre-wrap; }
+    .place { padding:12px 0; border-bottom:1px solid var(--line); }
+    .place:last-child { border-bottom:0; }
+    .place strong { display:block; }
+    .place small { color:var(--muted); display:block; margin-top:4px; }
+    .place p { margin:7px 0 0; white-space:pre-wrap; }
+    .tiny { color:var(--muted); font-size:.84rem; line-height:1.45; }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (min-width:760px) { .grid { grid-template-columns:1fr 1fr; } #map { height:470px; } }
+  </style>
+</head>
+<body>
+  <header><div class="inner">
+    <h1>🐾 Psí výlety</h1>
+    <p>Mapa míst na procházky s kamarády</p>
+  </div></header>
+  <main>
+    <div class="notice"><strong>První testovací verze.</strong> Zatím můžeš zkoušet mapu a zadávání míst. Sdílení mezi účty se zapne po doplnění Supabase údajů a nastavení přihlášení/skupiny.</div>
+    <div class="grid">
+      <section class="card">
+        <h2>🗺️ Mapa výletů</h2>
+        <div id="map" aria-label="Mapa míst"></div>
+        <div class="actions">
+          <button id="locate" type="button" class="secondary">Použít mou polohu</button>
+          <button id="pick" type="button" class="secondary">Vybrat místo na mapě</button>
+        </div>
+        <p class="tiny">Tip: klepni na mapu a souřadnice se vyplní do formuláře.</p>
+        <div id="mapStatus" class="status" role="status"></div>
+      </section>
+      <section class="card">
+        <h2>📍 Přidat místo</h2>
+        <form id="placeForm">
+          <label for="name">Název místa *</label>
+          <input id="name" required maxlength="100" placeholder="Např. louka u lesa">
+          <div class="row">
+            <div><label for="lat">Zeměpisná šířka *</label><input id="lat" required inputmode="decimal" placeholder="49.96"></div>
+            <div><label for="lng">Zeměpisná délka *</label><input id="lng" required inputmode="decimal" placeholder="14.07"></div>
+          </div>
+          <label for="note">Poznámka</label>
+          <textarea id="note" maxlength="1000" placeholder="Parkování, voda, stín, vhodné pro psy…"></textarea>
+          <div class="actions">
+            <button type="submit">Uložit místo</button>
+            <button type="button" id="clearForm" class="secondary">Vymazat formulář</button>
+          </div>
+        </form>
+        <div id="formStatus" class="status" role="status"></div>
+      </section>
+      <section class="card">
+        <h2>📚 Uložená místa</h2>
+        <div id="places"><p class="tiny">Zatím tu nejsou žádná místa. Přidej první přes formulář.</p></div>
+        <div class="actions"><button id="export" type="button" class="secondary">Stáhnout zálohu JSON</button><button id="importBtn" type="button" class="secondary">Načíst zálohu JSON</button><input id="importFile" type="file" accept="application/json,.json" hidden></div>
+        <p class="tiny">Tato první verze ukládá místa pouze v tomto prohlížeči. Zatím se nesdílí s ostatními členy skupiny.</p>
+      </section>
+      <section class="card">
+        <h2>🔐 Připojení databáze</h2>
+        <p class="tiny">Až budeme připravovat sdílení mezi kamarády, doplníme adresu projektu Supabase a veřejný Publishable key. Tajný Secret key se do této stránky nikdy nevkládá.</p>
+        <label for="supabaseUrl">Supabase Project URL</label>
+        <input id="supabaseUrl" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off">
+        <label for="publishableKey">Publishable key</label>
+        <input id="publishableKey" placeholder="sb_publishable_…" autocomplete="off">
+        <div class="actions"><button id="saveConfig" type="button">Uložit nastavení v tomto prohlížeči</button><button id="clearConfig" type="button" class="secondary">Vymazat nastavení</button></div>
+        <p id="configStatus" class="status" role="status">Databáze zatím není připojená.</p>
+      </section>
+    </div>
+    <p class="tiny" style="text-align:center;margin:18px 0">Psí výlety · soukromý projekt pro kamarády</p>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+  (() => {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const STORAGE_PLACES = 'psi-vylety-places-v1';
+    const STORAGE_CONFIG = 'psi-vylety-config-v1';
+    let places = [];
+    let markers = [];
+    let pickMode = false;
+
+    try { places = JSON.parse(localStorage.getItem(STORAGE_PLACES) || '[]'); if (!Array.isArray(places)) places = []; }
+    catch { places = []; }
+
+    const map = L.map('map').setView([49.96, 14.07], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    function numberFromInput(id) {
+      return Number($(id).value.trim().replace(',', '.'));
+    }
+    function validCoords(lat, lng) {
+      return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    }
+    function savePlaces() {
+      localStorage.setItem(STORAGE_PLACES, JSON.stringify(places));
+      renderPlaces();
+    }
+    function renderPlaces() {
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+      const list = $('places');
+      list.replaceChildren();
+      if (!places.length) {
+        const p = document.createElement('p'); p.className = 'tiny'; p.textContent = 'Zatím tu nejsou žádná místa. Přidej první přes formulář.'; list.append(p); return;
+      }
+      places.forEach((place, index) => {
+        const marker = L.marker([place.latitude, place.longitude]).addTo(map);
+        const popup = document.createElement('div');
+        const strong = document.createElement('strong'); strong.textContent = place.name; popup.append(strong);
+        if (place.note) { const note = document.createElement('p'); note.textContent = place.note; popup.append(note); }
+        marker.bindPopup(popup); markers.push(marker);
+        const item = document.createElement('div'); item.className = 'place';
+        const title = document.createElement('strong'); title.textContent = place.name; item.append(title);
+        const coords = document.createElement('small'); coords.textContent = `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`; item.append(coords);
+        if (place.note) { const note = document.createElement('p'); note.textContent = place.note; item.append(note); }
+        const actions = document.createElement('div'); actions.className = 'actions';
+        const show = document.createElement('button'); show.type = 'button'; show.className = 'secondary'; show.textContent = 'Ukázat na mapě';
+        show.addEventListener('click', () => { map.setView([place.latitude, place.longitude], 15); marker.openPopup(); }); actions.append(show);
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary'; remove.textContent = 'Smazat';
+        remove.addEventListener('click', () => { if (confirm(`Opravdu smazat místo „${place.name}“?`)) { places.splice(index, 1); savePlaces(); } }); actions.append(remove);
+        item.append(actions); list.append(item);
+      });
+    }
+    map.on('click', event => {
+      $('lat').value = event.latlng.lat.toFixed(6);
+      $('lng').value = event.latlng.lng.toFixed(6);
+      $('mapStatus').textContent = pickMode ? 'Souřadnice vybrány. Zadej název a ulož místo.' : 'Souřadnice z mapy byly vloženy do formuláře.';
+      pickMode = false;
+    });
+    $('pick').addEventListener('click', () => { pickMode = true; $('mapStatus').textContent = 'Teď klepni na požadované místo na mapě.'; });
+    $('locate').addEventListener('click', () => {
+      if (!navigator.geolocation) { $('mapStatus').textContent = 'Tento prohlížeč nepodporuje zjištění polohy.'; return; }
+      $('mapStatus').textContent = 'Zjišťuji polohu…';
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        map.setView([lat, lng], 14); $('lat').value = lat.toFixed(6); $('lng').value = lng.toFixed(6);
+        $('mapStatus').textContent = 'Poloha vyplněna. Zadej název místa.';
+      }, err => { $('mapStatus').textContent = 'Polohu se nepodařilo získat. Povol polohu v prohlížeči nebo vyber místo na mapě.'; }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+    $('placeForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const name = $('name').value.trim(), latitude = numberFromInput('lat'), longitude = numberFromInput('lng'), note = $('note').value.trim();
+      if (!name) { $('formStatus').textContent = 'Doplň název místa.'; return; }
+      if (!validCoords(latitude, longitude)) { $('formStatus').textContent = 'Souřadnice nejsou platné. Zkontroluj šířku a délku.'; return; }
+      places.unshift({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), name, latitude, longitude, note, createdAt: new Date().toISOString() });
+      savePlaces();
+      $('formStatus').textContent = 'Místo je uloženo v tomto prohlížeči.';
+      $('name').value = ''; $('note').value = '';
+      map.setView([latitude, longitude], 13);
+    });
+    $('clearForm').addEventListener('click', () => { $('placeForm').reset(); $('formStatus').textContent = ''; });
+    $('export').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify({ app: 'psi-vylety', version: 1, places }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'psi-vylety-zaloha.json'; a.click(); URL.revokeObjectURL(url);
+    });
+    $('importBtn').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', async event => {
+      const file = event.target.files && event.target.files[0]; if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        const incoming = Array.isArray(data) ? data : data.places;
+        if (!Array.isArray(incoming) || incoming.some(p => !p || typeof p.name !== 'string' || !validCoords(Number(p.latitude), Number(p.longitude)))) throw new Error('Soubor nemá očekávaný formát.');
+        places = incoming.map(p => ({ id: p.id || String(Date.now() + Math.random()), name: p.name.slice(0,100), latitude: Number(p.latitude), longitude: Number(p.longitude), note: String(p.note || '').slice(0,1000), createdAt: p.createdAt || new Date().toISOString() }));
+        savePlaces(); $('formStatus').textContent = 'Záloha byla načtena.';
+      } catch (e) { $('formStatus').textContent = 'Zálohu se nepodařilo načíst: ' + e.message; }
+      event.target.value = '';
+    });
+    function loadConfig() {
+      let cfg = {}; try { cfg = JSON.parse(localStorage.getItem(STORAGE_CONFIG) || '{}'); } catch {}
+      $('supabaseUrl').value = cfg.url || ''; $('publishableKey').value = cfg.key || '';
+      $('configStatus').textContent = cfg.url && cfg.key ? 'Údaje jsou uložené pouze v tomto prohlížeči. Připojení databáze ještě není aktivované.' : 'Databáze zatím není připojená.';
+    }
+    $('saveConfig').addEventListener('click', () => {
+      const url = $('supabaseUrl').value.trim().replace(/\/+$/, ''), key = $('publishableKey').value.trim();
+      if (!/^https:\/\/[a-zA-Z0-9.-]+\.supabase\.co$/.test(url)) { $('configStatus').textContent = 'Zkontroluj Project URL; obvykle má tvar https://název-projektu.supabase.co'; return; }
+      if (!key || key.startsWith('sb_secret_') || key.toLowerCase().includes('service_role')) { $('configStatus').textContent = 'Vlož pouze veřejný Publishable key, nikdy Secret key.'; return; }
+      localStorage.setItem(STORAGE_CONFIG, JSON.stringify({ url, key }));
+      $('configStatus').textContent = 'Nastavení uloženo v tomto prohlížeči. Databázi ještě společně bezpečně zapojíme.';
+    });
+    $('clearConfig').addEventListener('click', () => { localStorage.removeItem(STORAGE_CONFIG); loadConfig(); });
+    renderPlaces(); loadConfig();
+  })();
+  </script>
+</body>
+</html>
