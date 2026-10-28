@@ -21,7 +21,14 @@
 <section class="card"><h2>🗺️ Mapa výletů</h2><div id="map" aria-label="Mapa míst"></div><div class="actions"><button id="locate" type="button" class="secondary">Použít mou polohu</button><button id="pick" type="button" class="secondary">Vybrat místo na mapě</button></div><p class="tiny">Klepni na mapu a souřadnice se vyplní do formuláře.</p><div id="mapStatus" class="status" role="status"></div></section>
 <section class="card"><h2>📍 Přidat místo</h2><form id="placeForm"><label for="name">Název místa *</label><input id="name" required maxlength="100" placeholder="Např. louka u lesa"><div class="row"><div><label for="lat">Zeměpisná šířka *</label><input id="lat" required inputmode="decimal" placeholder="49.96"></div><div><label for="lng">Zeměpisná délka *</label><input id="lng" required inputmode="decimal" placeholder="14.07"></div></div><label for="note">Poznámka</label><textarea id="note" maxlength="1000" placeholder="Parkování, voda, stín, vhodné pro psy…"></textarea><div class="actions"><button type="submit">Uložit místo</button><button type="button" id="clearForm" class="secondary">Vymazat formulář</button></div></form><div id="formStatus" class="status" role="status"></div></section>
 <section class="card"><h2>📚 Sdílená místa</h2><div id="places"><p class="tiny">Načítám místa…</p></div><div class="actions"><button id="refresh" type="button" class="secondary">Obnovit seznam</button><button id="logout" type="button" class="secondary">Odhlásit se</button></div><p class="tiny">Místa se ukládají do společné databáze, takže se zobrazí i ostatním přihlášeným členům skupiny.</p></section>
-</div><p class="tiny" style="text-align:center;margin:18px 0">Psí výlety · soukromý projekt pro kamarády</p>
+</div>
+<section class="card" style="margin-top:14px">
+<h2>📲 Aplikace do telefonu</h2>
+<p>Android: stáhni instalační aplikaci Psí výlety a otevři stažený soubor APK.</p>
+<div class="actions"><a href="https://github.com/tzouz/Psi-venceni/releases/download/android-apk/app-debug.apk" style="display:inline-block;background:#245c45;color:white;text-decoration:none;font-weight:650;border-radius:10px;padding:11px 14px">Stáhnout aplikaci pro Android (APK)</a></div>
+<p class="tiny">Při instalaci může Android požádat o povolení instalace z tohoto prohlížeče. iPhone APK nepodporuje; na iPhonu otevři web v Safari a použij Sdílet → Přidat na plochu.</p>
+</section>
+<p class="tiny" style="text-align:center;margin:18px 0">Psí výlety · soukromý projekt pro kamarády</p>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
