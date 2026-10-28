@@ -1,0 +1,45 @@
+name: Build Psí výlety APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-android.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        working-directory: android
+        run: gradle --no-daemon assembleDebug
+
+      - name: Publish APK to latest GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-apk
+          name: Psí výlety pro Android
+          body: |
+            Instalační APK pro Android. Stažení a instalace probíhá na vlastní odpovědnost.
+            Pokud GitHub Android varuje před instalací z neznámého zdroje, povol instalaci pro prohlížeč, ze kterého APK stahuješ.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
+          fail_on_unmatched_files: true
