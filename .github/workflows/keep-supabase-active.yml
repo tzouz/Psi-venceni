@@ -12,7 +12,7 @@ jobs:
   keep-active:
     runs-on: ubuntu-latest
     steps:
-      - name: Send a lightweight database request
+      - name: Check Supabase Auth health endpoint
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
@@ -24,7 +24,7 @@ jobs:
           fi
           curl --fail --silent --show-error \
             --retry 2 --retry-delay 10 \
-            "$SUPABASE_URL/rest/v1/groups?select=id&limit=1" \
+            "$SUPABASE_URL/auth/v1/health" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Accept: application/json" \
             -o /dev/null
